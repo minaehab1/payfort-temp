@@ -1,0 +1,439 @@
+var fpr; 
+var boxes;
+var box;
+var merchantLogo;
+var pay;
+var verified;
+var container;
+var response;
+var icon;
+var btm;
+var close;
+var btnSpan;
+var btnLoading;
+
+var secureCard;
+var card;
+var plans;
+var secureBtn;
+var options;
+var code;
+var front;
+var dpass;
+var input;
+
+var header;
+var value;
+var circle;
+var wait;
+
+
+
+$(document).ready(function() {
+
+    /* -----------------------------------------------------
+    		 // Define base div
+    ----------------------------------------------------- */
+
+    fpr = '.fp-r ';
+    boxes = $(fpr + '.center');
+    box = $(fpr + '.wrapper');
+    merchantLogo = $(fpr + '.merchantLogo');
+    pay = $(fpr + '.pay');
+    verified = $(fpr + '.verified');
+    container = $(fpr + '.container');
+    response = $(fpr + '.response');
+    icon = response.find('i');
+    btm = $(fpr + '.btm');
+    close = $(fpr + '.close');
+    btnSpan = pay.find('span');
+    btnLoading = pay.find('i');
+
+    secureCard = $(fpr + '.secureCard');
+    card = $(fpr + '.card');
+    plans = $(fpr + '.plans');
+    secureBtn = $(fpr + '.secureBtn');
+    options = $(fpr + '.options');
+    code = $(fpr + '.code');
+    front = $(fpr + '.front');
+    input = $(fpr + '.input');
+    dpass = code.find('.input');
+
+    header = $(fpr + 'header');
+    value = $(fpr + '.itemValue');
+    circle = $(fpr + '.circle');
+    wait = $(fpr + '.wait');
+
+    /* -----------------------------------------------------
+    				 input filled script / tokenization
+     ----------------------------------------------------- */
+
+    $('input.input-field').focus(function() {
+        $(this).parent('span.input').addClass('input-filled');
+    });
+    $('input.input-field').blur(function() {
+        if ($(this).val() == '') {
+            $(this).parent('span.input').removeClass('input-filled');
+        }
+    });
+
+    $('input.input-field').each(function() {
+        if ($(this).val() == '') {
+            $(this).parent('span.input').removeClass('input-filled');
+        } else {
+            $(this).parent('span.input').addClass('input-filled');
+        }
+    });
+
+    /* -----------------------------------------------------
+    				Ripple effect
+    ----------------------------------------------------- */
+		$(".pay").on("click", function(e) {
+        var x = e.pageX;
+        var y = e.pageY;
+        var clickY = y - $(this).offset().top;
+        var clickX = x - $(this).offset().left;
+        var box = this;
+
+        var setX = parseInt(clickX);
+        var setY = parseInt(clickY);
+        $('<svg><circle cx="' + setX + '" cy="' + setY + '" r="' + 0 + '"></circle></svg>').appendTo(this)
+            .delay(500).queue(function() {
+                $(this).remove();
+            });
+
+        var c = $(box).find("circle");
+        c.animate({
+            "r": $(box).outerWidth()
+        });
+    });
+		/* -----------------------------------------------------
+		SET SOME ANIMATION DEFAULTS NEWWWWWWWWW
+		----------------------------------------------------- */
+		var
+				aniDuration = 600,
+				aniEase = [.41, 1.34, .51, 1.01];
+		// aniEase = [500, 25];
+
+		//aniEase = 'easeOutCirc',
+		aniEaseOut = [.41, 1.34, .51, 1.01];
+		//aniEaseOut = 'easeInCirc';
+
+    /* -----------------------------------------------------
+    REGISTER CUSTOM TRANSITIONS
+    ----------------------------------------------------- */
+    // personal helper
+    function newTrans(name, fx) {
+        var ease, dur;
+        if (name.match("In$")) {
+            ease = aniEase;
+            dur = aniDuration;
+            fx.opacity = [1, 0]; // forcefeed opacity
+            fx.scale = [1, .8]
+        } else {
+            dur = aniDuration / 1.66;
+            ease = aniEaseOut; // aniEase/Out set elsewhere
+            fx.opacity = 0;
+            fx.scale = .8;
+        }
+
+        fx.translateZ = 0; // add to object
+
+        $.Velocity.RegisterUI(name, {
+            defaultDuration: dur,
+            calls: [
+                [fx, aniDuration / 1000, {
+                    easing: ease
+                }]
+            ]
+        });
+
+
+    } //end newTrans()
+    newTrans('custom.slideUpIn', {
+        translateY: [0, 100]
+    });
+    newTrans('custom.slideDownIn', {
+        translateY: [0, -100]
+    });
+    newTrans('custom.slideUpOut', {
+        translateY: -100
+    });
+    newTrans('custom.slideDownOut', {
+        translateY: 100
+    });
+    newTrans('custom.scaleIn', {
+        scale: [1, 0.3]
+    });
+    newTrans('custom.scaleOut', {
+        scale: 0.3
+    });
+    // newTrans('custom.slideRightIn', { translateX: [0,330] });
+
+
+}); // end of document ready
+
+
+/* -----------------------------------------------------
+INITIAL TRANSITION
+----------------------------------------------------- */
+
+function initialTransition()
+{
+		// SEQUENCES Mine
+		var seqInit = [
+			{elements: box,properties: 'custom.slideUpIn',options: {		display: false,		delay: 300,		sequenceQueue: false}},
+			{elements: merchantLogo,properties: 'custom.slideUpIn',options: {display: false,delay: 120,sequenceQueue: false}},
+			{elements: verified,properties: 'custom.scaleIn',options: {display: false,delay: 240,sequenceQueue: false}
+}];
+    $.Velocity.RunSequence(seqInit); // run initial sequence
+}
+
+
+/* -----------------------------------------------------
+				show/hide
+----------------------------------------------------- */
+function showElement(element) {
+    element.velocity("transition.bounceIn", 450);
+}
+
+function hideElement(element) {
+    element.velocity("transition.bounceOut", 350);
+}
+
+function showElementAsSpring(element) {
+    element.velocity("transition.bounceIn", "spring", 450);
+}
+
+function hideElementAsSpring(element) {
+    element.velocity("transition.bounceOut", "spring", 350);
+}
+
+/* -----------------------------------------------------
+				change heights
+----------------------------------------------------- */
+function changeElementHeight(element, newHeight, duration) {
+    element.velocity({
+        height: newHeight
+    }, duration, {
+        queue: false
+    });
+}
+
+function changeElementHeightAsSpring(element, newHeight, duration) {
+    element.velocity({
+        height: newHeight
+    }, "spring", duration);
+}
+/* -----------------------------------------------------
+				 Errors
+----------------------------------------------------- */
+function addErrorTheme(element) {
+    element.addClass("error");
+}
+
+function removeErrorTheme(element) {
+    element.removeClass("error");
+}
+
+function shakeElement(element, duration) {
+    element.velocity("callout.shake", duration);
+}
+
+function showPlansErrorTheme() {
+    $(".plans").velocity("callout.pulse", {stagger: 150}, {drag: true}, 250);
+    addErrorTheme($(".plans"));
+}
+/* -----------------------------------------------------
+				shake card
+----------------------------------------------------- */
+function shakeCard() {
+    $(".wrapper")
+				.velocity({translateX: "-12px",rotateY: "-8deg"}, 200)
+				.velocity({translateX: "8px",rotateY: "4deg"}, 50)
+				.velocity({translateX: "-8px",rotateY: "-2deg"}, 100)
+				.velocity({translateX: "6px",rotateY: "1deg"}, 50)
+				.velocity({translateX: "0",rotateY: "0"}, 200)
+}
+/* -----------------------------------------------------
+				Installments Option - show service checkbox
+----------------------------------------------------- */
+function displayInstallmentsOption(isRememberMe) {
+    var newSecureCardHeight;
+    var newCardHeight;
+    if (isRememberMe) {
+        newSecureCardHeight = "342px";
+        newCardHeight = "272px";
+    } else {
+        newSecureCardHeight = "294px";
+        newCardHeight = "274px";
+    }
+    changeElementHeight($(".secureCard"), newSecureCardHeight, 100);
+    changeElementHeight($(".card"), newCardHeight, 1);
+    $(".services").velocity("transition.bounceIn", 350);
+		$("#peInfoContent").velocity("transition.bounceIn", { delay: 300, duration: 450});
+
+}
+/* -----------------------------------------------------
+				Installments flip
+----------------------------------------------------- */
+function flipCardToInstallments(plansCount) {
+    var secureCardHeight = (plansCount * 60) + 90 ;
+    var cardHeight = (secureCardHeight - 70) ;
+		secureCardHeight = secureCardHeight+"px";
+		cardHeight = cardHeight+"px";
+		$(".remember-me").velocity({opacity: 0 }, 1);
+    $(".secureCard").velocity({height: secureCardHeight}, 200);
+    $(".card").velocity({height: cardHeight}, 100);
+		$(".card").velocity({ translateZ: 0,  rotateY: "40deg"} ,  150);
+		$(".card").velocity({ rotateY: "-180deg"},  "spring", 700);
+		$(".plans").velocity("transition.bounceIn", { delay: 300, stagger: 150, drag: true, duration: 750});
+		$("#closeBtn").velocity("custom.slideDownOut", {  delay: 300, duration: 700});
+		$("#backBtn").velocity("custom.slideDownIn", {  delay: 400, duration: 700});
+
+}
+/* -----------------------------------------------------
+				Installments flip - reverse
+----------------------------------------------------- */
+function flipCardToCardInfo(isRememberMe) {
+    var secureCardHeight;
+    var newCardHeight;
+    if (isRememberMe) {
+        secureCardHeight = "342px";
+        newCardHeight = "272px";
+    } else {
+        secureCardHeight = "294px";
+        newCardHeight = "274px";
+    }
+		$(".plans").velocity({opacity: 0}, 1);
+		$(".remember-me").velocity({opacity: 1}, 1);
+    $(".secureCard").velocity({height: secureCardHeight}, {delay: 25}, 100);
+		$(".card").velocity({height: newCardHeight}, 101);
+		$(".card").velocity({ translateZ: 0,  rotateY: "40deg"} , 300);
+		$(".card").velocity({ rotateY: "-0"},  "spring", 700);
+		$("#backBtn").velocity("custom.slideUpOut", {  delay: 1, duration: 500});
+		$("#closeBtn").velocity("custom.slideUpIn", {  delay: 350, duration: 500});
+}
+/* -----------------------------------------------------
+				Installments flip
+----------------------------------------------------- */
+function resetCardHeight(isRememberMe) {
+    var newHeight;
+    var newCardHeight;
+    if (isRememberMe) {
+        newHeight = "280px";
+        newCardHeight = "210px";
+    } else {
+        newHeight = "233px";
+        newCardHeight = "162px";
+    }
+		$(".card").velocity({height: newCardHeight}, 200);
+		$(".secureCard").velocity({height: newHeight}, 200);
+}
+/* -----------------------------------------------------
+				chosing a plane
+----------------------------------------------------- */
+
+function changeHieghtAfterSelectingPlan(plansCount, index) {
+    var plansCountWithBank = ((parseInt(plansCount) + 1) * 60) + 90;
+    var height = plansCountWithBank + "px";
+    var heightForCard = (plansCountWithBank - 70) + "px";
+    showPePlanInfoByIndexI(index);
+    $(".secureCard").velocity({height: height}, { delay: 250, duration: 250});
+	$(".card").velocity({height: heightForCard}, { delay: 250, duration: 250});
+	$(".bank").velocity("transition.bounceIn", { delay: 450, duration: 450});
+}
+/* -----------------------------------------------------
+				Pay Pressed
+----------------------------------------------------- */
+
+// function payPressed() {
+//     var seq = [
+// 			{elements: btnSpan,properties: 'custom.scaleOut',options: {delay: 100,sequenceQueue: false}},
+// 			{elements: btnLoading,properties: 'custom.scaleIn',options: {duration: 120,sequenceQueue: true}},
+// 			{elements: pay,properties: {backgroundColor: '#404d5b'},options: {duration: 250,sequenceQueue: false}
+//     }, ];
+//     $.Velocity.RunSequence(seq);
+// }
+/* -----------------------------------------------------
+								show Loading
+----------------------------------------------------- */
+
+// function showLoading() {
+//     var btmSpan = btm.find('span');
+//     var btmLoading = btm.find('i');
+//     var seq = [
+// 			{elements: btnSpan,properties: 'custom.scaleOut',options: {delay: 100,sequenceQueue: false}},
+// 			{elements: btnLoading,properties: 'custom.scaleIn',options: {duration: 120,sequenceQueue: true}},
+// 			{elements: pay,properties: {backgroundColor: '#404d5b'},options: {duration: 250,sequenceQueue: false}
+// 		}, ];
+//     $.Velocity.RunSequence(seq);
+// }
+/* -----------------------------------------------------
+								show NEW Loading
+----------------------------------------------------- */
+
+function showNewLoading(){
+	var loading = [
+		{ elements: merchantLogo, properties: { scale: 1.1 }, options: { duration: 80 } },
+		{ elements: merchantLogo, properties: { scale: 0.9 }, options: { duration: 60 } },
+		{elements: merchantLogo,properties: 'custom.slideDownOut',options: {display: false,delay: 60,sequenceQueue: false}},
+		{elements: box,properties: 'custom.slideDownOut',options: {display: false,delay: 20,sequenceQueue: false}},
+		{elements: circle,properties: 'custom.slideDownIn',options: {delay: 1,sequenceQueue: false}},
+		{elements: wait,properties: 'custom.slideDownIn',options: {delay: 60, sequenceQueue: true}}
+];
+
+$.Velocity.RunSequence(loading);
+}
+
+/* -----------------------------------------------------
+											Reverse PAY
+----------------------------------------------------- */
+function reversePay(){
+	var loading = [
+		{elements: wait,properties: 'custom.slideDownOut',options: {delay: 0,duration: 900,sequenceQueue: false}},
+		{elements: circle,properties: 'custom.slideDownOut',options: {delay: 120,duration: 300,sequenceQueue: false}},
+		{elements: box,properties: 'custom.slideUpIn',options: {		display: false,		delay: 300,		sequenceQueue: false}},
+		{elements: merchantLogo,properties: 'custom.slideUpIn',options: {display: false,delay: 120,sequenceQueue: false}},
+];
+
+$.Velocity.RunSequence(loading);
+}
+
+/* -----------------------------------------------------
+						Show response
+----------------------------------------------------- */
+function showResponseDiv() {
+    var seq = [
+			{elements: container, properties: { opacity: '0' },  options: { duration: 1, sequenceQueue: false} },
+			{elements: wait,properties: 'custom.slideDownOut',options: {delay: 0,duration: 900,sequenceQueue: false}},
+			{elements: circle,properties: 'custom.slideDownOut',options: {delay: 120,duration: 300,sequenceQueue: false}},
+			{elements: box,properties: 'custom.slideUpIn',options: {delay: 400,sequenceQueue: false}},
+			{elements: response,properties: 'custom.slideDownIn',options: {duration: 450,sequenceQueue: false}},
+			{elements: icon,properties: 'custom.scaleIn',options: {duration: 320,delay: 200,sequenceQueue: false}},
+			{elements: btm,properties: 'custom.scaleIn',options: {display: false,delay: 225,sequenceQueue: false}},
+			];
+
+    $.Velocity.RunSequence(seq);
+}
+
+function showFailedPage() {
+	var seqInit = [
+               {elements: container, properties: { opacity: '0' },  options: { duration: 1, sequenceQueue: false} },
+               {elements: box,properties: 'custom.slideUpIn',options: {delay: 400, dsiplay: false, sequenceQueue: false}},
+               {elements: response,properties: 'custom.slideDownIn',options: {duration: 450,sequenceQueue: false}},
+               {elements: icon,properties: 'custom.scaleIn',options: {duration: 320,delay: 200,sequenceQueue: false}},
+               {elements: btm,properties: 'custom.scaleIn',options: {display: false,delay: 225,sequenceQueue: false}}
+             ];
+
+             $.Velocity.RunSequence(seqInit); // run response intial sequence
+}
+
+//Mapping functions to be accessible from other JS
+// window.payCalled = payPressed;
+window.reversePayCall = reversePay;
+window.showResponseDiv = showResponseDiv;
+// window.showLoading = showLoading;
+window.showNewLoading = showNewLoading;
+window.showFailedPage = showFailedPage;
+window.initialTransition =initialTransition;

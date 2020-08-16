@@ -1,0 +1,693 @@
+var PAY_CLICK_CHECK_COUNT = 2;
+var isNext = false;
+var isFrontFace = true;
+var payPressed = -1;
+var payAfterFlip = 0;
+var selectedPlanId;
+var selectedIssuerId;
+var isPeTnx = false;
+var isPeCardType = false;
+
+var isCorrectCardNumber = false;
+var isCorrectExpDate = false;
+var isCorrectCVV = false;
+
+$(document).ready(
+		function() {
+			initView();
+			setupListeners();
+			if (resposneBo == undefined
+					|| resposneBo.response_code == undefined) {
+				initialTransition();
+			} else {
+				if (status == "0") {
+					handleFaildResponse(resposneBo.response_code,
+							resposneBo.response_message);
+				} else {
+					responseWithSuccessDiv(resposneBo.response_code,
+							resposneBo.response_message, resposneBo.fort_id);
+				}
+				autoRedirect();
+			}
+		});
+
+function autoRedirect() {
+	$('form[name="backToMerchantForm"]').attr('action', get_action());
+	timeout = window.setTimeout(function() {
+		$('form[name="backToMerchantForm"]').submit();
+	}, 5000);
+}
+
+function get_action() {
+	return _contextPath + '/general/backToMerchant';
+}
+
+function preBackToMerchant() {
+	$("#backToMerchantBtn").attr("disabled", true);
+	// showLoading();
+}
+
+function clearTimeOut() {
+	clearTimeout(timeout);
+}
+
+function startLoading() {
+	// clearConditionalElementsWithoutPay();
+	$("#submitBtn").attr("disabled", true);
+	$("#backBtn").attr("disabled", true);
+	hideElementAsSpring($('#closeBtn'), 150);
+	showNewLoading();
+	disbaleElements();
+}
+
+function payOnClick() {
+	document.getElementById("submitBtn").disabled = true;
+	payPressed++;
+	var cardNumberAsString = cardNumberInput.val().replace(/ /g, '').trim();
+	if (cardNumberAsString.indexOf("*") > -1) {
+		if (originMaskedCardNumber != cardNumberAsString) {
+			$("#card_status").val(cardStatusInvalid);
+			addErrorTheme(cardNumberSpan);
+			// stopLoading();
+			document.getElementById("submitBtn").disabled = false;
+			return false;
+		}
+	}
+
+	var isSuccess = validateCHDForm();
+	if (!isSuccess) {
+		// stopLoading();
+		document.getElementById("submitBtn").disabled = false;
+		return false;
+	}
+
+	if (isPeTnx) {
+		if (isFrontFace) {
+			var plansCount = parseInt($("#plansCountH").val());
+			flipcard(plansCount);
+			document.getElementById("submitBtn").disabled = false;
+			return false;
+		} else {
+			if ($('input[name="radio"]').filter(':checked').length > 0) {
+				issuerTerms = $("#bank").filter(':checked');
+				if (!issuerTerms.val()) {
+					shakeElement($(".bank"), 450);
+					// stopLoading();
+					document.getElementById("submitBtn").disabled = false;
+					return false;
+				}
+				selectedPlanId = $('input[name="radio"]').filter(':checked')
+						.attr('id');
+
+				selectedIssuerId = $('input[name="issuerId"]').attr('value');
+			}
+		}
+	}
+
+	if (latestCardNumber == cardNumberAsString) {
+		if ($("#card_status").val() == cardStatusMissmatch) {
+			removeErrorTheme(cardNumberSpan);
+			cardNumErrorContent.html(PAYMENT_OPTION_MISS_MATCH);
+			if (cardNumErrorHintSpan.css("opacity") == 0)
+				shakeElement(cardNumErrorHintSpan, 1000);
+			// stopLoading();
+			document.getElementById("submitBtn").disabled = false;
+			return false;
+		}
+	} else {
+		latestCardNumber = cardNumberAsString;
+	}
+
+	// startLoading();
+	showNewLoading();
+	var formatedExpDate = $("#expDateInput").val().substring(3)
+			+ $("#expDateInput").val().substring(0, 2);
+	$.ajax({
+		url : "submitPaymentPage",
+		context : document.body,
+		method : "POST",
+		type : "POST",
+		data : JSON.stringify({
+			"cardDetails" : {
+				"cardNumber" : cardNumberAsString,
+				"maskedCardNumber" : originMaskedCardNumber,
+				"cardNotMasked" : cardNotMasked,
+				"keyIndex" : keyIndex,
+				"expiryDate" : formatedExpDate,
+				"cardHolderName" : chNameInput.val(),
+				"cvc" : $("#cvvInput").val(),
+				"token" : $("#token").val(),
+				"rememberMe" : $("#rememberMe").is(":checked"),
+				"planId" : selectedPlanId,
+				"issuerId" : selectedIssuerId,
+				"deviceFingerprint" : $("#deviceFingerprint").val()
+			},
+			"deviceDetails" : {
+				"deviceOs" : deviceOS(),
+				"deviceType" : deviceType(),
+				"browserType" : deviceBrowser.detect(),
+				"screenWidth" : deviceScreenWidth,
+				"screenHeight" : deviceScreenHeight
+
+			}
+		}),
+		contentType : "application/json; charset=utf-8",
+		cache : false
+	}).fail(function(xhr, err) {
+		try {
+			var data = xhr.responseJSON;
+			var errorCode = data.errorCode;
+			// clearTimeOut();
+			$("#submitBtn").attr("disabled", false);
+			clearConditionalElementsWithoutPay();
+
+			switch (errorCode) {
+			case cardStatusMissmatch:
+				stopLoading();
+				isCorrectCardNumber = false;
+				addErrorTheme(cardNumberSpan);
+				cardNumErrorContent.html(PAYMENT_OPTION_MISS_MATCH);
+				if (cardNumErrorHintSpan.css("opacity") == 0)
+					showElementAsSpring(cardNumErrorHintSpan, 1000);
+
+				break;
+			case cardStatusFailed:
+				stopLoading();
+				isCorrectCardNumber = false;
+				isPeTnx = false;
+				addErrorTheme(cardNumberSpan);
+				break;
+			case cardStatusInvalid:
+				stopLoading();
+				isCorrectCardNumber = false;
+				addErrorTheme(cardNumberSpan);
+				break;
+			case cardBinSuppressed:
+				stopLoading();
+				addErrorTheme(cardNumberSpan);
+				isCorrectCardNumber = false;
+				cardNumErrorContent.html(CARD_BIN_SUPPRESSED);
+				showElement(cardNumErrorHintSpan);
+				break;
+			case abnormalPageToken:
+				stopLoading();
+				isCorrectCardNumber = false;
+				window.location = _contextPath + '/general/abnormal';
+				break;
+			case motoRedirectionNotAllowed:
+				stopLoading();
+				isCorrectCVV = false;
+				cvvErrorContent.html(CVV_NOT_ALLOWED_FOR_MOTO);
+				if (allEmptyErrorHintSpan.css("opacity") == 0)
+					showElementAsSpring(allEmptyErrorHintSpan, 1000);
+				addErrorTheme(cvvSpan);
+				break;
+			case invalidCardHolderName:
+				stopLoading();
+				handleWarning(ELEMENT.HOLDER_NAME, true);
+				return false;
+			default:
+				$("#response_token").val(data.pageToken);
+				responseDiv(errorCode, data.errorMessage);
+				autoRedirect();
+				break;
+			}
+			return false;
+		} catch (exp) {
+			stopLoading();
+			isCorrectCardNumber = false;
+			window.location = _contextPath + '/general/abnormal';
+		}
+	}).done(
+			function(jsonResponse, textStatus, jqXHR) {
+				var cardStatus = jsonResponse.status;
+				var abnormal = jsonResponse.abnormal;
+				var exception = jsonResponse.exception;
+				$("#submitBtn").attr("disabled", true);
+				if (jsonResponse.isExternalUrl) {
+					window.location = jsonResponse.page;
+					return true;
+				}
+
+				if (typeof abnormal != 'undefined') {
+					window.location.hash = '#fort';
+					window.location.href = abnormal;
+					return false;
+				}
+
+				if (typeof exception != 'undefined') {
+					window.location.hash = '#fort';
+					window.location.href = exception;
+					return false;
+				}
+
+				clearConditionalElementsWithoutPay();
+				isCorrectCardNumber = true;
+				$("#response_token").val(jsonResponse.token);
+				isPeTnx = false;
+				responseWithSuccessDiv(jsonResponse.params.response_code,
+						jsonResponse.params.response_message,
+						jsonResponse.params.fort_id);
+				autoRedirect();
+				handleWarning(ELEMENT.HOLDER_NAME, false);
+			});
+
+	return false;
+}
+
+function responseWithSuccessDiv(code, message, fortId) {
+	// document.getElementById('lableText').innerHTML = RESPONSE_FAILED_HINT;
+	$("#lableText").html($("#response_success_hintH").val());
+	$("#pText").html(
+			$("#response_tnx_no_hintH").val() + " <b> " + fortId + "</b> </br>"
+					+ message);
+	showResponseDiv();
+}
+
+function responseDiv(errorCode, errorMsg) {
+	// document.getElementById('lableText').innerHTML = RESPONSE_FAILED_HINT;
+	$("#lableText").html($("#response_failed_hintH").val());
+	$("#pText").html(
+			$("#response_error_code_hintH").val() + " <b> " + errorCode
+					+ "</b> </br> " + $("#response_error_msg_hintH").val()
+					+ " " + errorMsg);
+	$('#successIndicator').addClass('icon-cancel-circled fail');
+	// $('#footer').addClass('failedBg br-bottom');
+	showResponseDiv();
+}
+
+function stopLoading() {
+	enableElements();
+	reversePayCall();
+	$("#submitBtn").removeAttr('disabled');
+	// $("#submitBtn").removeClass("loading");
+	// buttonHintSpan.html(PAY);
+	if (isFrontFace)
+		showElementAsSpring($('#closeBtn'), 150);
+}
+
+function disableSubmit() {
+	// $("#submitBtn").attr("disabled", "disabled");
+	$("#submitBtn").attr("disabled", true);
+}
+
+function enableSubmit() {
+	$("#submitBtn").removeAttr("disabled");
+}
+
+function flipcard(plansCount) {
+	if (isFrontFace == true) {
+		flipCardToInstallments(plansCount);
+		isFrontFace = false;
+		buttonHintSpan.html(SUBMIT);
+	} else {
+		peInfoContent.css('display', 'none');
+		payAfterFlip = 0;
+		isFrontFace = true;
+		if ($('#rememberMe').length) {
+			flipCardToCardInfo(true);
+		} else {
+			flipCardToCardInfo(false);
+		}
+	}
+}
+
+function validateCardByNumber() {
+	var cardNumberAsString = cardNumberInput.val().replace(/ /g, '').trim();
+	var mCard = getCard();
+	if (mCard != null &&
+			((mCard.type == "amex" && cardNumberAsString.length < 15)
+			|| (mCard.type != "amex" && cardNumberAsString.length < 16))) {
+		clearConditionalElements();
+		latestCardNumber = cardNumberAsString;
+		$("#card_status").val("");
+		if (payPressed != -1) {
+			handleWarning(ELEMENT.CARD_NUMBER, true);
+		}
+		isCorrectCardNumber = false;
+		return false;
+	}
+	// else {
+	// if($("#card_status").val() == "valid" || $("#card_status").val() ==
+	// "payeasy"){
+	// removeErrorTheme(cardNumberSpan);
+	// if (cardNumErrorHintSpan.css("opacity") == 1)
+	// hideElementAsSpring(cardNumErrorHintSpan,1000);
+	// }
+	// }
+
+	if ($("#card_status").val() != "" && latestCardNumber == cardNumberAsString) {
+		if ($("#card_status").val() == cardStatusMissmatch) {
+			removeErrorTheme(cardNumberSpan);
+			cardMismatchMsgHandler(merchantReqPaymentOption, mCard);
+			if (cardNumErrorHintSpan.css("opacity") == 0)
+				shakeElement(cardNumErrorHintSpan, 1000);
+		}
+		return;
+	} else {
+		latestCardNumber = cardNumberAsString;
+	}
+
+	isPeCardType = false;
+	$.ajax({
+		url : "general/validateCard",
+		context : document.body,
+		method : "POST",
+		type : "POST",
+		data : JSON.stringify({
+			"cardNumber" : cardNumberAsString,
+			"maskedCardNumber" : originMaskedCardNumber,
+			"cardNotMasked" : cardNotMasked,
+			"keyIndex" : keyIndex,
+			"token" : $("#token").val()
+		}),
+		contentType : "application/json; charset=utf-8",
+		cache : false
+	}).fail(function(xhr, err) {
+		var data = xhr.responseJSON;
+		var errorCode = data.errorCode;
+
+		clearConditionalElementsWithoutPay();
+		document.getElementById("submitBtn").disabled = false;
+		// clearTimeOut();
+		$("#card_status").val(errorCode);
+		switch (errorCode) {
+		case cardStatusMissmatch:
+			isCorrectCardNumber = false;
+			addErrorTheme(cardNumberSpan);
+			cardMismatchMsgHandler(merchantReqPaymentOption, mCard);
+			if (cardNumErrorHintSpan.css("opacity") == 0)
+				showElementAsSpring(cardNumErrorHintSpan, 1000);
+			break;
+		case cardStatusFailed:
+			isCorrectCardNumber = false;
+			isPeTnx = false;
+			addErrorTheme(cardNumberSpan);
+			break;
+		case cardStatusInvalid:
+			stopLoading();
+			isCorrectCardNumber = false;
+			addErrorTheme(cardNumberSpan);
+			break;
+		case cardBinSuppressed:
+			stopLoading();
+			addErrorTheme(cardNumberSpan);
+			isCorrectCardNumber = false;
+			cardNumErrorContent.html(CARD_BIN_SUPPRESSED);
+			showElement(cardNumErrorHintSpan);
+			break;
+		case abnormalPageToken:
+			isCorrectCardNumber = false;
+			window.location = _contextPath + '/general/abnormal';
+			break;
+		}
+
+		return false;
+	}).done(function(jsonResponse, textStatus, jqXHR) {
+		clearConditionalElementsWithoutPay();
+		document.getElementById("submitBtn").disabled = false;
+		isCorrectCardNumber = true;
+		isPeTnx = false;
+		$("#card_status").val(jsonResponse);
+		if (jsonResponse == "PAYEASY") {
+			isPeCardType = true;
+			loadPlans(cardNumberAsString);
+		} else if (jsonResponse == "MADA") {
+			switchLengthToVisaMC();
+			hideElement(mcIndicator);
+			hideElement(visaIndicator);
+			hideElement(meezaIndicator);
+			showElement(madaIndicator);
+		} else if(jsonResponse == "MEEZA"){
+			switchLengthToMeeza();
+			hideElement(mcIndicator);
+			hideElement(visaIndicator);
+			hideElement(madaIndicator);
+			showElement(meezaIndicator);
+		}
+	});
+}
+
+function clearConditionalElements() {
+	hideElement($(".services"), 10);
+	if ($('#rememberMe').length) {
+		resetCardHeight(true);
+	} else {
+		resetCardHeight(false);
+	}
+	isPeTnx = false;
+	payeasyCB.prop("checked", false);
+	buttonHintSpan.html(PAY);
+	$("#plansCountH").val(0);
+	removeErrorTheme(cardNumberSpan);
+	if (cardNumErrorHintSpan.css("opacity") == 1 && isCorrectCardNumber)
+		hideElementAsSpring(cardNumErrorHintSpan, 1000);
+}
+
+function clearConditionalElementsWithoutPay() {
+	hideElement($(".services"), 10);
+	if ($('#rememberMe').length) {
+		resetCardHeight(true);
+	} else {
+		resetCardHeight(false);
+	}
+	isPeTnx = false;
+	payeasyCB.prop("checked", false);
+	$("#plansCountH").val(0);
+	removeErrorTheme(cardNumberSpan);
+	if (cardNumErrorHintSpan.css("opacity") == 1 && isCorrectCardNumber)
+		hideElementAsSpring(cardNumErrorHintSpan, 1000);
+}
+
+function doDisplayPeOption() {
+	if (isCorrectCardNumber && isCorrectCVV && isCorrectExpDate
+			&& peCheckSpan.css("opacity") == 0) {
+		if (isPeCardType && $("#plansCountH").val() > 0) {
+			if ($('#rememberMe').length) {
+				displayInstallmentsOption(true);
+			} else {
+				displayInstallmentsOption(false);
+			}
+		}
+	}
+}
+
+function selectPlanByIndex(index, id) {
+	var plansCount = $("#plansCountH").val();
+	if (!isOnePlanSelected) {
+		changeHieghtAfterSelectingPlan(plansCount, index);
+		isOnePlanSelected = true;
+	} else {
+		showPePlanInfoByIndexI(index);
+	}
+}
+
+function showPePlanInfoByIndexI(index) {
+	unCheckAllPlans();
+	var popOverId = index + "popOver";
+	var r = "#" + popOverId;
+	var element = document.getElementById(popOverId);
+	if (element != null) {
+		if (element.style.display == "none") {
+			if ($(r).length)
+				showElement($(r));
+		} else {
+			if ($(r).length)
+				hideElement($(r));
+		}
+	}
+}
+
+function showLoadingDelay() {
+	timeout = window.setTimeout(function() {
+		showNewLoading();
+	}, 1000);
+}
+
+function handleWarning(element, doDisplay) {
+	if (doDisplay) {
+		switch (element) {
+		case ELEMENT.CARD_NUMBER:
+			addErrorTheme(cardNumberSpan);
+			if (payPressed >= PAY_CLICK_CHECK_COUNT) {
+				var cardNumberAsString = cardNumberInput.val()
+						.replace(/ /g, '').trim();
+				var mCard = getCard();
+				if (cardNumberAsString.length == 0) {
+					cvvErrorContent.html(ALL_EMPTY_INVALID);
+					if (allEmptyErrorHintSpan.css("opacity") == 0)
+						showElementAsSpring(allEmptyErrorHintSpan, 1000);
+					return false;
+				} else if ($("#card_status").val() == cardStatusMissmatch) {
+					cardMismatchMsgHandler(merchantReqPaymentOption, mCard);
+				} else if ($("#card_status").val() == cardBinSuppressed) {
+					cardNumErrorContent.html(CARD_BIN_SUPPRESSED);
+				} else if (mCard != null) {
+					if (cardNumberAsString.length != 15
+							&& (merchantReqPaymentOption == AMEX || mCard.type == "amex")) {
+						cardMismatchMsgHandler(merchantReqPaymentOption, mCard);
+					} else if (cardNumberAsString.length != 16
+							&& mCard.type != "amex"
+							&& merchantReqPaymentOption != AMEX) {
+						cardMismatchMsgHandler(merchantReqPaymentOption, mCard);
+					} else {
+						cardNumErrorContent.html(CARD_NO_INVALID);
+					}
+				} else if ($("#card_status").val() == cardStatusMissmatch) {
+					cardMismatchMsgHandler(merchantReqPaymentOption, mCard);
+				} else {
+					cardNumErrorContent.html(CARD_NO_INVALID);
+
+				}
+				if (cardNumErrorHintSpan.css("opacity") == 0)
+					showElementAsSpring(cardNumErrorHintSpan, 1000);
+			}
+			break;
+		case ELEMENT.CVV:
+			addErrorTheme(cvvSpan);
+			if (payPressed >= PAY_CLICK_CHECK_COUNT) {
+				var cardNumberAsString = cardNumberInput.val()
+						.replace(/ /g, '').trim();
+				var mCard = getCard();
+				var cvvAsString = cvvInput.val().trim();
+				if (cvvAsString.length == 0) {
+					cvvErrorContent.html(ALL_EMPTY_INVALID);
+					if (allEmptyErrorHintSpan.css("opacity") == 0) {
+						showElementAsSpring(allEmptyErrorHintSpan, 1000);
+					}
+					return false;
+				} else if (mCard != null) {
+					if (cvvAsString.length != 4
+							&& (merchantReqPaymentOption == AMEX || mCard.type == "amex")) {
+						cvvErrorContent.html(CVV_LENGTH_AMEX_INVALID);
+					} else if (cardNumberAsString.length != 3
+							&& mCard.type != "amex"
+							&& merchantReqPaymentOption != AMEX) {
+						cvvErrorContent.html(CVV_LENGTH_INVALID);
+					}
+				} else {
+					cvvErrorContent.html(ALL_EMPTY_INVALID);
+				}
+				if (allEmptyErrorHintSpan.css("opacity") == 0) {
+					showElementAsSpring(allEmptyErrorHintSpan, 1000);
+				}
+			}
+			break;
+		case ELEMENT.EXPIRY_DATE:
+			addErrorTheme(expDateSpan);
+			break;
+		case ELEMENT.HOLDER_NAME:
+			addErrorTheme(chNameSpan);
+			if (payPressed > -1
+					&& typeof cardHolderNameErrorContent.val() != 'undefined') {
+				cardHolderNameErrorContent.html(INVALID_CARD_HOLDER_NAME_MSG);
+				showElementAsSpring(cardHolderNameErrorHintSpan, 1000);
+			}
+			if (!isFrontFace) {
+				flipCardToCardInfo();
+				var cardNumberAsString = cardNumberInput.val()
+						.replace(/ /g, '').trim();
+				loadPlans(cardNumberAsString);
+				document.getElementById("payeasyCB").checked = false;
+				isFrontFace = true;
+			}
+
+			break;
+		}
+	} else {
+		switch (element) {
+		case ELEMENT.CARD_NUMBER:
+			removeErrorTheme(cardNumberSpan);
+			if (cardNumErrorHintSpan.css("opacity") == 1) {
+				hideElementAsSpring(cardNumErrorHintSpan, 1000);
+			}
+			break;
+		case ELEMENT.CVV:
+			removeErrorTheme(cvvSpan);
+			if (allEmptyErrorHintSpan.css("opacity") == 1
+					&& cardNumberInput.val().length > 0
+					&& expDateInput.val().length > 0) {
+				hideElementAsSpring(allEmptyErrorHintSpan, 1000);
+			}
+			break;
+		case ELEMENT.EXPIRY_DATE:
+			removeErrorTheme(expDateSpan);
+			if (expDateErrorHintSpan.css("opacity") == 1) {
+				hideElementAsSpring(expDateErrorHintSpan, 1000);
+			}
+			break;
+		case ELEMENT.HOLDER_NAME:
+			removeErrorTheme(chNameSpan);
+			if (cardHolderNameErrorHintSpan.css("opacity") == 1) {
+				hideElementAsSpring(cardHolderNameErrorHintSpan, 1000);
+			}
+			break;
+		}
+
+		if (allEmptyErrorHintSpan.css("opacity") == 1 && isCorrectCardNumber
+				&& isCorrectCVV && isCorrectExpDate) {
+			hideElementAsSpring(allEmptyErrorHintSpan, 1000);
+		}
+	}
+}
+
+function handleInvalidExpDateMonthRange(expDateAsString) {
+	if (payPressed != -1)
+		addErrorTheme(expDateSpan);
+	if (payPressed >= PAY_CLICK_CHECK_COUNT) {
+		if (expDateAsString.length == 0) {
+			cvvErrorContent.html(ALL_EMPTY_INVALID);
+			if (allEmptyErrorHintSpan.css("opacity") == 0) {
+				showElementAsSpring(allEmptyErrorHintSpan, 1000);
+			}
+			return;
+		} else {
+			expDateErrorContent.html(EXP_DATE_INVALID);
+		}
+
+		if (expDateErrorHintSpan.css("opacity") == 0) {
+			showElementAsSpring(expDateErrorHintSpan, 1000);
+		}
+	}
+}
+
+function handleInvalidExpDate(expDateAsString) {
+	if (payPressed != -1)
+		addErrorTheme(expDateSpan);
+	if (payPressed >= PAY_CLICK_CHECK_COUNT) {
+		if (expDateAsString.length == 0) {
+			cvvErrorContent.html(ALL_EMPTY_INVALID);
+			if (allEmptyErrorHintSpan.css("opacity") == 0) {
+				showElementAsSpring(allEmptyErrorHintSpan, 1000);
+			}
+			return;
+		} else {
+			expDateErrorContent.html(EXP_DATE_PAST_INVALID);
+		}
+
+		if (expDateErrorHintSpan.css("opacity") == 0) {
+			showElementAsSpring(expDateErrorHintSpan, 1000);
+		}
+	}
+}
+
+function handleValidExpDate() {
+	removeErrorTheme(expDateSpan);
+	if (expDateErrorHintSpan.css("opacity") == 1)
+		hideElementAsSpring(expDateErrorHintSpan, 1000);
+
+	doDisplayPeOption();
+}
+
+function handleFaildResponse(errorCode, errorMsg) {
+
+	$("#lableText").html($("#response_failed_hintH").val());
+	$("#pText").html(
+			$("#response_error_code_hintH").val() + " <b> " + errorCode
+					+ "</b> </br> " + $("#response_error_msg_hintH").val()
+					+ " " + errorMsg);
+	$('#successIndicator').addClass('icon-cancel-circled fail');
+	// $('#footer').addClass('failedBg br-bottom');
+	showFailedPage();
+
+}

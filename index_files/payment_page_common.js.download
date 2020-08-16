@@ -1,0 +1,1032 @@
+var cards = [ {
+	type : 'visaelectron',
+	pattern : /^4(026|17500|405|508|844|91[37])/
+}, {
+	type : 'visa',
+	pattern : /^4/
+},{
+	 type: 'amex',
+     pattern: /^3[47]/
+}, {
+	type : 'mastercard',
+	pattern : /^(?:5[1-5][0-9]{2}|222[1-9]|22[3-9][0-9]|2[3-6][0-9]{2}|27[01][0-9]|2720)/
+}, {
+	type : 'maestro',
+	pattern : /^(?:(?:5[0678]\\d\\d|6304|6390|67\\d\\d)\\d{8,15})/
+} , {
+	type : 'meeza',
+	pattern : /^9818/
+} , {
+	type : 'meeza',
+	pattern : /^6(?:2(?:7(?:59[07]|632|382)|(?:805|766)9|2009|7(?:88|77)8)|0(?:3(?:6(?:65|06)|3(?:53|36)|370)|2(?:85[05]|050)|3794|3(?:73|34|01)8|1(?:844|52[06]|467|368)))[0-9]{10,13}/
+} ];
+
+var ELEMENT = {
+		CARD_NUMBER:1,
+		CVV:2,
+		EXPIRY_DATE:3,
+		HOLDER_NAME:4
+};
+
+var PAY_CLICK_CHECK_COUNT = 2;
+var isNext = false;
+var isFrontFace = true;
+var payPressed = -1;
+var payAfterFlip = 0;
+var isOnePlanSelected = false;
+var isPeTnx = false;
+var isPeCardType = false;
+
+var isCorrectCardNumber = false;
+var isCorrectExpDate = false;
+var isCorrectCVV = false;
+var latestCardNumber = "";
+
+// ----------------- VIEWS LABELS -----------------
+// if (agent == 'Desktop') {
+	var CARD_NO_INVALID;
+	var CARD_LENGTH_INVALID;
+	var ALL_EMPTY_INVALID;
+	var CVV_LENGTH_INVALID;
+	var EXP_DATE_PAST_INVALID;
+	var EXP_DATE_INVALID;
+	var PAYMENT_OPTION_MISS_MATCH;
+	var CVV_NOT_ALLOWED_FOR_MOTO;
+	var CARD_LENGTH_AMEX_INVALID;
+	var CVV_LENGTH_AMEX_INVALID;
+	var CARD_NOT_EMPTY_MSG;
+	var INVALID_CARD_HOLDER_NAME_MSG;
+	var CARD_BIN_SUPPRESSED;
+
+	var cardNumErrorHintSpan;
+	var expDateErrorHintSpan;
+	var allEmptyErrorHintSpan;
+	var cardNumErrorContent;
+	var cvvErrorContent;
+	var expDateErrorContent;	
+	var cardHolderNameErrorHintSpan;
+	var cardHolderNameErrorContent;
+// }
+var PAY = $("#pay_btn_hintH").val();
+var NEXT = $("#next_btn_hintH").val();
+var SUBMIT = $("#submit_btn_hintH").val();
+
+var buttonHintSpan;
+var payeasyCB;
+var payeasyInfoI;
+var peCheckSpan;
+var peInfoContent;
+
+var closeBtn;
+var backBtn;
+var visaIndicator;
+var mcIndicator;
+var amexIndicator;
+var madaIndicator;
+var meezaIndicator;
+
+var cardNumberInput;
+var cvvInput;
+var expDateInput;
+var chNameInput;
+var cardContainerDiv;
+
+var cardNumberSpan;
+var cvvSpan;
+var expDateSpan;
+var chNameSpan;
+
+var rememberMeInput;
+
+function initView() {
+	// if (agent == 'Desktop') {
+
+		CARD_NO_INVALID = $("#card_no_invalid_warrning_msgH").val();
+		CARD_LENGTH_INVALID = $("#card_no_length_warrning_msgH").val();
+		ALL_EMPTY_INVALID = $("#all_empty_warrning_msgH").val();
+		CVV_LENGTH_INVALID = $("#cvv_length_warrning_msgH").val();
+		EXP_DATE_PAST_INVALID = $("#exp_date_past_invalid_warrning_msgH").val();
+		EXP_DATE_INVALID = $("#exp_date_invalid_warrning_msgH").val();
+		PAYMENT_OPTION_MISS_MATCH = $("#card_type_po_error_hintH").val();
+		CVV_NOT_ALLOWED_FOR_MOTO = $("#cvv_not_allowed_for_motoH").val();
+		CARD_LENGTH_AMEX_INVALID= $("#card_no_length_amex_warrning_msgH").val();
+		CVV_LENGTH_AMEX_INVALID = $("#cvv_length_warrning_amex_msgH").val();
+		INVALID_CARD_HOLDER_NAME_MSG = $("#holder_name_invalid_msgH").val();
+		CARD_BIN_SUPPRESSED = $("#card_bin_suppressed_warrning_msgH").val();
+
+		
+		cardNumErrorHintSpan = $("#cardNumErrHintSpan");
+		expDateErrorHintSpan = $("#expDateErrHintSpan");
+		allEmptyErrorHintSpan = $("#allEmptyErrHintSpan");
+		cardNumErrorContent = $("#cardNumErrContent");
+		cvvErrorContent = $("#cvvErrContent");
+		expDateErrorContent = $("#expDateContentErr");
+		cardHolderNameErrorHintSpan = $("#cardHolderErrHintSpan");
+		cardHolderNameErrorContent = $("#cardHolderErrContent");
+	// }
+
+	PAY = $("#pay_btn_hintH").val();
+	NEXT = $("#next_btn_hintH").val();
+	SUBMIT = $("#submit_btn_hintH").val();
+
+	buttonHintSpan = $("#btnHint");
+	rememberMeInput = $('#rememberMe');
+	cardNumberInput = $("#cardNoInput");
+	cvvInput = $("#cvvInput");
+	expDateInput = $("#expDateInput");
+	chNameInput = $("#chNameInput");
+	cardContainerDiv = $("#cardContainerDiv");
+	payeasyCB = $("#payeasyCB");
+	visaIndicator = $("#visaIndicator");
+	mcIndicator = $("#mcIndicator");
+	amexIndicator = $("#amexIndicator");
+	madaIndicator = $("#madaIndicator");
+	meezaIndicator = $("#meezaIndicator");
+
+	cardNumberSpan = $("#cardNumSpan");
+	cvvSpan = $("#cvvSpan");
+	expDateSpan = $("#expDateSpan");
+	chNameSpan = $("#cardHNameSpan");
+
+	closeBtn = $("#closeBtn");
+	backBtn = $("#backBtn");
+
+	payeasyInfoI = $("#payeasyInfo");
+	peCheckSpan = $("#peCheckSpan");
+	peInfoContent = $("#peInfoContent");
+
+}
+
+
+function setupListeners() {
+	chromeBackBtnScript();
+	tokensOnStart();
+	loadMerchantLogo();
+
+	// listeners
+	payeasyCB.change(function() {
+		if (buttonHintSpan.html() != "") {
+			showPayeasyInfo();
+			if (this.checked) {
+				isPeTnx = true;
+				buttonHintSpan.html(NEXT);
+				isNext = true;
+			} else {
+				selectedPlanId = "";
+				$("#plansCountH").val("");
+				isPeTnx = false;
+				buttonHintSpan.html(PAY);
+				isNext = false;
+			}
+		}
+	});
+
+	cardholderFieldsListiners();
+	applyMerchantPaymentOptionChoice();
+	preventCtrlShiftI();
+
+	$('#paymentForm').on('keyup keypress', function(e) {
+		if (e.keyCode == 13 || e.which == 13) {
+			e.preventDefault();
+			document.getElementById("submitBtn").click();
+			if(isCorrectCardNumber && isCorrectExpDate &&  isCorrectCVV){
+				document.getElementById("submitBtn").disabled = true;
+			}
+			return false;
+		}
+	});
+
+	
+
+	if (agent == 'Desktop') {
+		if ($('#rememberMe').length) {
+			resetCardHeight(true);
+		} else {
+			resetCardHeight(false);
+		}
+	}
+
+	motoRedirection();
+
+	checkInstallmentToken();
+}
+
+function preventCtrlShiftI(){
+	$(document).keydown(function(event) {
+		if (event.keyCode == 123) {
+			return false;
+		} else if (event.ctrlKey && event.shiftKey && event.keyCode == 73) {
+			return false; // Prevent from ctrl+shift+i
+		}
+	});
+}
+
+function applyMerchantPaymentOptionChoice(){
+	
+	switch (merchantReqPaymentOption) {
+	case VISA:
+		showElement(visaIndicator);
+		switchLengthToVisaMC();
+		break;
+	case MASTERCARD:
+		showElement(mcIndicator);
+		switchLengthToVisaMC();
+		break;
+	case AMEX:
+		showElement(amexIndicator);
+		switchLengthToAmex();
+		break;
+	case MADA:
+		showElement(madaIndicator);
+		switchLengthToVisaMC();
+		break;
+	case MEEZA:
+		showElement(meezaIndicator);
+		switchLengthToMeeza();
+		break;
+
+	}
+}
+
+
+function cardholderFieldsListiners(){
+	cardNumberInput.bind("cut copy paste", function(e) {
+		e.preventDefault();
+		cardNumberInput.bind("contextmenu", function(e) {
+			e.preventDefault();
+		});
+	});
+
+	expDateInput.bind("cut copy paste", function(e) {
+		e.preventDefault();
+		expDateInput.bind("contextmenu", function(e) {
+			e.preventDefault();
+		});
+	});
+
+	cvvInput.bind("cut copy paste", function(e) {
+		e.preventDefault();
+		cvvInput.bind("contextmenu", function(e) {
+			e.preventDefault();
+		});
+	});
+}
+
+function checkInstallmentToken(){
+	if(cardNumberInput.val().indexOf("*") != -1){
+		cardNumberInput.blur();
+	}
+}
+
+function motoRedirection() {
+	if ($("#eci").val() == "MOTO") {
+		cvvSpan.css("display", "none");
+		expDateSpan.removeClass("half1");
+		expDateSpan.removeClass("b-r");
+	}
+}
+
+function chromeBackBtnScript() {
+	window.location.hash = "no-back-button";
+	window.location.hash = "Again-No-back-button";// again because google
+	// chrome don't insert first
+	// hash into history
+	window.location.hash = "Again-No-back-button";// again because google
+	// chrome don't insert first
+	// hash into history
+	window.location.hash = "Again-No-back-button";// again because google
+	// chrome don't insert first
+	// hash into history
+	window.location.hash = "Again-No-back-button";// again because google
+	// chrome don't insert first
+	// hash into history
+	window.onhashchange = function() {
+		var hash = window.location.hash;
+		var href = window.location.href;
+		if (hash.indexOf("#no-back-button") > -1
+				|| hash.indexOf("#Again-No-back-button") > -1
+				|| hash.indexOf("#fort") > -1) {
+			window.location.hash = "no-back-button";
+		} else {
+			window.location.href = cancelOperation+"?token="+$("#token").val();
+		}
+	};
+}
+
+function tokensOnStart() {
+	// for tokens
+	if ($('#cardNoInput').val().length > 0) {
+		cardTypeListener();
+		validateCardByNumber();
+		formatExpiryDate(1,false);
+		validateExpDate();
+
+		$('#cvvInput').keyup(function() {// so i dont need to blure this
+			// input field to show plans token
+			// case
+			if ($('#cvvInput').val().length === 3) {
+				validateCvvNumber();
+			}
+		});
+	}
+}
+
+function loadMerchantLogo() {
+	if ($("#merchantLogoImgH").val().indexOf("/null/null") <= -1) {
+		var image = document.getElementById("merchantLogoImg");
+		var downloadingImage = new Image();
+		downloadingImage.onload = function() {
+			image.src = this.src +'?'+Math.random();
+		};
+		downloadingImage.src = $("#merchantLogoImgH").val();
+	}
+}
+
+
+function getContextPath() {
+	return window.location.protocol + "//" + window.location.host + "/";
+}
+
+function callAjax(url, type, data) {
+	var resu;
+	$.ajax({
+		url : url,
+		type : type,
+		data : data,
+		cache : false,
+		async : false,
+		success : function(result) {
+			resu = result;
+		},
+		error : function(res) {
+			resu = res;
+		}
+	});
+	return resu;
+}
+
+function disbaleElements() {
+	cardNumberInput.attr('readonly', true);
+	expDateInput.attr('readonly', true);
+	cvvInput.attr('readonly', true);
+	chNameInput.attr('readonly', true);
+	payeasyCB.attr('readonly', true);
+	rememberMeInput.attr('readonly', true);
+}
+
+function enableElements() {
+	cardNumberInput.removeAttr('readonly');
+	expDateInput.removeAttr('readonly');
+	cvvInput.removeAttr('readonly');
+	chNameInput.removeAttr('readonly');
+	payeasyCB.removeAttr('readonly');
+	rememberMeInput.removeAttr('readonly');
+}
+
+function showPayeasyInfo() {
+	if (peInfoContent.css('opacity') == '0') {
+		showElementAsSpring(peInfoContent);
+	} else {
+		hideElementAsSpring(peInfoContent);
+	}
+}
+
+function unCheckAllPlans() {
+	// hide others
+	var plansCount = $("#plansCountH").val();
+	var pop;
+	var popOverId;
+	var i;
+	for (i = 0; i < plansCount; i++) {
+		popOverId = i + "popOver";
+		pop = "#" + popOverId;
+		if ($(pop).length)
+			hideElement($(pop));
+	}
+	removeErrorTheme($(".plans"));
+}
+
+function loadPlans(cardNumberAsString) {
+	$.ajax({
+		url : "general/findInstallmentPlans",
+		context : document.body,
+		method : "POST",
+		type : "POST",
+		data : {
+			cardNumber : cardNumberAsString,
+			token : $("#token").val()
+		},
+		dataType : "html",
+		cache : false
+	}).fail(function(xhr, err) {
+		// dont show any errors or the abnormal page, handle it as it a valid
+		// card
+		$("#payeasyTnxH").val("0");
+		$("#cardStatusH").val("valid");
+	}).done(function(htmlResponse) {
+		if (htmlResponse == "") {
+			isPeTnx = false;
+			$("#cardStatusH").val("valid");
+		} else {
+			$('#faceBack').html(htmlResponse);
+			if ($("#plansCountH").val() > 0) {
+				doDisplayPeOption();
+			}
+			peInfoContent.css('display', 'block');
+		}
+	});
+}
+
+function cardTypeListener() {
+	// if (agent == 'Desktop' && cardNumErrorHintSpan.css("opacity") == 1) {
+		// handleWarning(ELEMENT.CARD_NUMBER,false);
+	// }
+	var cardNumberAsString = cardNumberInput.val().replace(/ /g, '').trim();
+	if(latestCardNumber !== '' && cardNumberAsString !== latestCardNumber){
+		handleWarning(ELEMENT.CARD_NUMBER,false);
+	}
+	
+	if (cardNumberAsString.length == 0) {
+		clearConditionalElements();
+		latestCardNumber = "";
+		if(merchantReqPaymentOption == null	|| merchantReqPaymentOption == ''){
+			switchLengthToMeeza();
+		}
+	} else if (cardNumberAsString.length == 1) {
+		clearConditionalElements();
+		if (merchantReqPaymentOption == "none") {
+			if (mcIndicator.css('opacity') > 0 || mcIndicator.css("display") == "block") {
+				hideElement(mcIndicator);
+			} else if (visaIndicator.css('opacity') > 0 ||  visaIndicator.css("display") == "block") {
+				hideElement(visaIndicator);
+			}else if (amexIndicator.css('opacity') > 0 || amexIndicator.css("display") == "block") {
+				hideElement(amexIndicator);
+			}else if (madaIndicator.css('opacity') > 0 || madaIndicator.css("display") == "block") {
+				hideElement(madaIndicator);
+			}else if (meezaIndicator.css('opacity') > 0 || meezaIndicator.css("display") == "block") {
+				hideElement(meezaIndicator);
+			}
+		}
+		
+		if(merchantReqPaymentOption == null	|| merchantReqPaymentOption == ''){
+			switchLengthToMeeza();
+		}
+	}else if($("#card_status").val() == 'MADA'){
+		if(cardNumberAsString.length > 6){
+			if (cardNumberAsString.substring(0, 7) == latestCardNumber.substring(0, 7)) {
+				if(madaIndicator.css('opacity') == '0' || madaIndicator.css("display") == "none"){
+					showElement(madaIndicator);
+				}
+				return;
+			}
+		}else if(cardNumberAsString.length >=4 && cardNumberAsString.length <=6){
+			if(cardNumberAsString.substring(0,cardNumberAsString.length) == latestCardNumber.substring(0,cardNumberAsString.length)){
+				if(madaIndicator.css('opacity') == '0' || madaIndicator.css("display") == "none"){
+					showElement(madaIndicator);
+				}
+				return;
+			}
+		} else if (cardNumberAsString.length < 4 && (madaIndicator.css('opacity') > '0' || madaIndicator.css("display") == "block")) {
+			hideElement(madaIndicator);
+			return;
+		}
+	}else if($("#card_status").val() == 'MEEZA'){
+		if(cardNumberAsString.length > 6){
+			if (cardNumberAsString.substring(0, 7) == latestCardNumber.substring(0, 7)) {
+				if(meezaIndicator.css('opacity') == '0' || meezaIndicator.css("display") == "none"){
+					showElement(meezaIndicator);
+				}
+				return;
+			}
+		}else if(cardNumberAsString.length >=4 && cardNumberAsString.length <=6){
+			if(cardNumberAsString.substring(0,cardNumberAsString.length) == latestCardNumber.substring(0,cardNumberAsString.length)){
+				if(meezaIndicator.css('opacity') == '0' || meezaIndicator.css("display") == "none"){
+					showElement(meezaIndicator);
+				}
+				return;
+			}
+		} else if (cardNumberAsString.length < 4 && (meezaIndicator.css('opacity') > '0' || meezaIndicator.css("display") == "block")) {
+			hideElement(meezaIndicator);
+			return;
+		}
+	}
+	
+	var mCard = getCard();	
+	if (mCard != null) {
+		switch (mCard.type) {
+		case "visaelectron":
+		case "visa":
+			if (merchantReqPaymentOption == null
+					|| merchantReqPaymentOption == ''
+					|| merchantReqPaymentOption == VISA
+					|| merchantReqPaymentOption == MADA) {
+				if (cardNumberAsString.length >= 4
+						&& (visaIndicator.css('opacity') == '0' || visaIndicator.css("display") == "none")) {
+					hideElement(mcIndicator);
+					hideElement(amexIndicator);
+					hideElement(meezaIndicator);
+					if(merchantReqPaymentOption == MADA){
+						hideElement(visaIndicator);
+						showElement(madaIndicator);
+					}else{
+						hideElement(madaIndicator);
+						showElement(visaIndicator);
+					}
+					
+					switchLengthToVisaMC();
+				} else if (merchantReqPaymentOption == "" && cardNumberAsString.length < 4 && (visaIndicator.css('opacity') > 0 || visaIndicator.css("display") == "block")) {
+					hideElement(visaIndicator);
+				}
+			} else {
+				$("#card_status").val(cardStatusMissmatch);
+			}
+			break;
+		case "mastercard":
+			if (merchantReqPaymentOption == null
+					|| merchantReqPaymentOption == ''
+					|| merchantReqPaymentOption == MASTERCARD
+					|| merchantReqPaymentOption == MADA) {
+				if (cardNumberAsString.length >= 4
+						&& (mcIndicator.css('opacity') == '0' || mcIndicator.css("display") == "none")) {
+					hideElement(visaIndicator);
+					hideElement(amexIndicator);
+					hideElement(meezaIndicator);
+					if(merchantReqPaymentOption == MADA){
+						hideElement(mcIndicator);
+						showElement(madaIndicator);
+					}else{
+						hideElement(madaIndicator);
+						showElement(mcIndicator);
+					}
+					
+					switchLengthToVisaMC();
+				} else if (merchantReqPaymentOption == "" && cardNumberAsString.length < 4
+						&& (mcIndicator.css('opacity') > 0 || mcIndicator.css("display") == "block")) {
+					hideElement(mcIndicator);
+				}
+			} else {
+				$("#card_status").val(cardStatusMissmatch);
+			}
+			break;
+		case "amex":
+			if (merchantReqPaymentOption == null
+					|| merchantReqPaymentOption == ''
+					|| merchantReqPaymentOption == AMEX) {
+				if (cardNumberAsString.length >= 4
+						&& (amexIndicator.css('opacity') == '0' || amexIndicator.css("display") == "none")) {
+					hideElement(visaIndicator);
+					hideElement(mcIndicator);
+					hideElement(madaIndicator);
+					hideElement(meezaIndicator);
+					showElement(amexIndicator);
+					switchLengthToAmex();
+				} else if (merchantReqPaymentOption == "" && cardNumberAsString.length < 4
+						&& (amexIndicator.css('opacity') > 0 || amexIndicator.css("display") == "block")) {
+					hideElement(amexIndicator);
+				}
+			} else {
+				$("#card_status").val(cardStatusMissmatch);
+			}
+			break;
+			case "meeza":
+				if (merchantReqPaymentOption == null
+						|| merchantReqPaymentOption == ''
+						|| merchantReqPaymentOption == AMEX) {
+					if (cardNumberAsString.length >= 4
+							&& (meezaIndicator.css('opacity') == '0' || meezaIndicator.css("display") == "none")) {
+						hideElement(visaIndicator);
+						hideElement(mcIndicator);
+						hideElement(madaIndicator);
+						hideElement(amexIndicator);
+						showElement(meezaIndicator);
+						switchLengthToMeeza();
+					} else if (merchantReqPaymentOption == "" && cardNumberAsString.length < 4
+							&& (meezaIndicator.css('opacity') > 0 || meezaIndicator.css("display") == "block")) {
+						hideElement(meezaIndicator);
+					}
+				} else {
+					$("#card_status").val(cardStatusMissmatch);
+				}
+				break;
+		}
+	} else {
+		if (merchantReqPaymentOption == "") {
+			// undefined
+			if (mcIndicator.css('opacity') > 0 || mcIndicator.css("display") == "block") {
+				hideElement(mcIndicator);
+			}
+			if (visaIndicator.css('opacity') > 0 || visaIndicator.css("display") == "block") {
+				hideElement(visaIndicator);
+			}
+			if (amexIndicator.css('opacity') > 0 || amexIndicator.css("display") == "block") {
+				hideElement(amexIndicator);
+			}
+			if (madaIndicator.css('opacity') > 0 || madaIndicator.css("display") == "block") {
+				hideElement(madaIndicator);
+			}
+			if (meezaIndicator.css('opacity') > 0 || meezaIndicator.css("display") == "block") {
+				hideElement(meezaIndicator);
+			}
+		}
+	}
+}
+
+function isNumber(evt) {
+// evt = (evt) ? evt : window.event;
+// var charCode = (evt.which) ? evt.which : evt.keyCode;
+// // firefox arrows acceptted
+// if (charCode > 36 && charCode < 41) {
+// return true;
+// }
+// if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+// return false;
+// }
+
+	var code = evt.keyCode || evt.which;
+	
+	 var regex = new RegExp("^\\d+$");
+	 if(evt.key.match(regex) || code == '9' || code == '8'){
+		 return true;
+	 }
+	return false;
+}
+
+function hasClass(element, cls) {
+	return (' ' + element.className + ' ').indexOf(' ' + cls + ' ') > -1;
+}
+
+function cancelRequest() {
+	if (isFrontFace == false) {
+		if($("#backBtn").attr("disabled")==="disabled"){
+			return false;
+		}
+		flipcard();
+		document.getElementById("payeasyCB").checked = false;
+		isPeTnx = false;
+		unCheckAllPlans();
+		$('input[name="radio"]').removeAttr('checked');
+		hideElementAsSpring($(".bank"));
+		selectedPlanId = "";
+		selectedIssuerId = null;
+		$("#payeasyTnxH").val("0");
+		buttonHintSpan.html(PAY);
+		// showElementAsSpring(peInfoContent);
+		isOnePlanSelected = false; 
+		$("#bank").prop("checked", false);
+		return false;
+	} else {
+		if($("#closeBtn").attr("disabled")==="disabled"){
+			return false;
+		}
+		$("#closeBtn").attr("disabled", "disabled");
+		$("#submitBtn").attr("disabled", "disabled");
+		window.location.hash = '#no-back-button';
+		window.location.href = cancelOperation+"?token="+$("#token").val();
+		isOnePlanSelected = false;
+		return true;
+
+	}
+}
+
+
+
+var formatExpiryDate = function(e, b) {
+    var date = $("input[id=expDateInput]").val();
+    if (date != '' && b == false) {
+        date = date.replace(/[^0-9\.\/]/g, '');
+        date = date.replace('\/\/', '');
+        date = date.replace(new RegExp("[\/]$"), "");
+        if (date.length == 2 && e.keyCode != 8) {
+            date = String(date) + "/";
+        }
+        if (date.length == 1) {
+            if (date.substring(0, 1) > 1) {
+                date = "0" + String(date) + "/";
+            }
+        }
+        if(date.length == 4 && date.indexOf("/") == -1){
+        	date = date.substring(0,2)+"/"+date.substring(2);
+        }
+    }
+    else{
+ if (date.length == 2 && e.keyCode != 8) {
+            date = String(date) + "/";
+        }
+    }
+    $("input[id=expDateInput]").val(date);
+}
+
+
+function getCard(){
+	if($("#card_status").val()=="MEEZA"){
+		var meezaCard = {
+			type : 'meeza',
+			pattern : null
+		}
+		return meezaCard;
+	}
+
+
+	var cardNumberAsString = cardNumberInput.val().replace(/ /g, '').trim();
+	var mCard = null;
+	var index, cardsLen;
+	for (index = 0, cardsLen = cards.length; index < cardsLen; index++) {
+		if (cards[index].pattern.test(cardNumberAsString)) {
+			mCard = cards[index];
+			break;
+		}
+	}
+	
+	return mCard;
+}
+
+function switchLengthToVisaMC(){
+	cvvInput.attr('maxlength','3');
+	cardNumberInput.attr('maxlength','16');
+}
+
+function switchLengthToAmex(){
+	cvvInput.attr('maxlength','4');
+	cardNumberInput.attr('maxlength','15');
+}
+
+function switchLengthToMeeza(){
+	cvvInput.attr('maxLength', '3');
+	cardNumberInput.attr('maxLength', '19');
+}
+
+
+function validateCardNumber() {
+	var cardNumberAsString = cardNumberInput.val().replace(/ /g, '').trim();
+	var mCard = getCard();
+
+	if(cardNumberAsString.length == 0 || mCard==null){
+		clearConditionalElements();
+		if (payPressed != -1){
+			handleWarning(ELEMENT.CARD_NUMBER,true);
+		}
+		isCorrectCardNumber = false;
+		return false;
+	}
+
+	var withoutStarsIfExsit = cardNumberAsString.replace(/\*/g, '').trim();
+	if (isNaN(withoutStarsIfExsit)) {
+		return false;
+	}
+
+	var isValidLength = false;
+	switch (mCard.type) {
+	case "visaelectron":
+	case "visa":
+	case "mastercard":
+		if (cardNumberAsString.length == 16) {
+			isValidLength = true;
+		}
+		break;
+	case "amex":
+		if (cardNumberAsString.length == 15) {
+			isValidLength = true;
+		}
+		break;
+	case "meeza":
+	if (cardNumberAsString.length == 16 || cardNumberAsString.length == 19) {
+		isValidLength = true;
+	}
+	}
+
+	if (isValidLength && ($("#card_status").val() == "VALID" ||
+			$("#card_status").val() == "PAYEASY"|| $("#card_status").val() == "MADA" || $("#card_status").val() == "MEEZA")) {
+		isCorrectCardNumber = true;
+		handleWarning(ELEMENT.CARD_NUMBER, false);
+		return true;
+	}
+
+	if (payPressed != -1){
+		handleWarning(ELEMENT.CARD_NUMBER,true);
+	}
+	isCorrectCardNumber = false;
+	return false;
+}
+
+function doSkipCVV(){
+	if ($("#eci") != undefined && $("#eci").val() == "MOTO") {
+		if (allEmptyErrorHintSpan !=null && allEmptyErrorHintSpan.css("opacity") == 1)
+			hideElementAsSpring(allEmptyErrorHintSpan, 1000);
+		return true;
+	}else if($("#service_command") != undefined && $("#service_command").val() == "CREATE_TOKEN"){
+		return true;
+	}
+	return false;
+}
+
+function validateCvvNumber() {
+	if(doSkipCVV()){
+		return true;
+	}
+	
+	var cvvAsString = cvvInput.val().trim();
+	if (cvvAsString.length == 0) {
+		if (payPressed != -1){
+			handleWarning(ELEMENT.CVV,true);
+		}
+		isCorrectCVV = false;
+		return false;
+	}
+
+	if (isNaN(cvvAsString)) {
+		return false;
+	}
+	
+	var mCard = getCard();
+	if(mCard == null && cvvAsString.length >=3){
+		return true;
+	}
+
+	var isValidLength = false;
+	if (mCard != null) {
+		switch (mCard.type) {
+		case "visaelectron":
+		case "visa":
+		case "mastercard": 
+			if (cvvAsString.length == 3) {
+				if(merchantReqPaymentOption != AMEX){
+					isValidLength = true;
+				}
+			}else if(cvvAsString.length == 4 && merchantReqPaymentOption == AMEX){
+				isValidLength = true;
+			}
+			break;
+		case "amex":
+			if (cvvAsString.length == 4) {
+				if(merchantReqPaymentOption == '' || merchantReqPaymentOption == AMEX){
+				  isValidLength = true;
+				}
+			}else if(cvvAsString.length == 3 && merchantReqPaymentOption != AMEX && merchantReqPaymentOption != ''){
+				isValidLength = true;
+			}
+			break;
+		case "meeza":
+			if(cvvAsString.length==3){
+				isValidLength = true;
+			}
+		}
+	}
+
+	if (isValidLength) {
+		isCorrectCVV = true;
+		doDisplayPeOption();
+		handleWarning(ELEMENT.CVV,false);		
+		return true;
+	}
+
+	if (payPressed != -1){
+		handleWarning(ELEMENT.CVV,true);
+	}
+	isCorrectCVV = false;
+	return false;
+}
+
+
+
+function validateExpDate() {
+	var expDateAsString = expDateInput.val().replace(/ /g, '').replace("/", "").trim();
+	
+	if(expDateAsString.length == 0){
+			handleWarning(ELEMENT.EXPIRY_DATE,false);
+		if (payPressed != -1){
+			handleWarning(ELEMENT.EXPIRY_DATE,true);		
+		}		
+		expDateInput.val("");
+		isCorrectExpDate = false;
+		return false;
+	}
+	
+	
+	if (isNaN(expDateAsString)) {
+		isCorrectExpDate = false;
+		return false;
+	}
+	
+	if(expDateAsString.length == 4){
+		var exYear = "20" + expDateAsString.substring(2);
+		var exMonth = expDateAsString.substring(0, 2);
+		var today =  new Date();
+		
+		if (exMonth < 1 || exMonth > 12) {
+			isCorrectExpDate = false;
+			handleInvalidExpDateMonthRange(expDateAsString);
+			return false;
+		}
+		
+		var expday = new Date();
+		expday.setFullYear(exYear, exMonth, 1);
+
+		if (expday < today) {
+			isCorrectExpDate = false;
+			handleInvalidExpDate(expDateAsString);
+			return false;
+		}else{
+			isCorrectExpDate = true;			
+			handleValidExpDate();
+			return true;	
+		}		
+	}
+
+	expDateInput.val("");
+	if (payPressed != -1)
+		handleWarning(ELEMENT.EXPIRY_DATE,true);	
+	isCorrectExpDate = false;
+	return false;
+}
+
+function validateCHDForm() {
+	var isCardNoCorrect = validateCardNumber();
+	var isCvvCorrect = validateCvvNumber();
+	var isExpDateCorrect = validateExpDate();	
+	
+	if (isCardNoCorrect) {
+		if (isExpDateCorrect) {
+			if (isCvvCorrect) {
+				if ($("#card_status").val() == "VALID" || $("#card_status").val() == "MADA"
+						|| $("#card_status").val() == "PAYEASY" || $("#card_status").val() == "MEEZA") {
+					if(document.getElementById("submitBtn")!=null){
+						document.getElementById("submitBtn").disabled = true;
+					}
+					return true;
+				} else {
+					validateCardNumber();
+					return false;
+				}
+			} else {
+				shakeCard();
+				cvvInput.focus();
+			}
+		} else {
+			shakeCard();
+			expDateInput.focus();
+		}
+	} else {
+		shakeCard();
+		cardNumberInput.focus();
+	}
+	return false;
+}
+
+
+
+var QueryString = function () {
+	  // This function is anonymous, is executed immediately and
+	  // the return value is assigned to QueryString!
+	  var query_string = {};
+	  var query = window.location.search.substring(1);
+	  var vars = query.split("&");
+	  for (var i=0;i<vars.length;i++) {
+	    var pair = vars[i].split("=");
+	        // If first entry with this name
+	    if (typeof query_string[pair[0]] === "undefined") {
+	      query_string[pair[0]] = decodeURIComponent(pair[1]);
+	        // If second entry with this name
+	    } else if (typeof query_string[pair[0]] === "string") {
+	      var arr = [ query_string[pair[0]],decodeURIComponent(pair[1]) ];
+	      query_string[pair[0]] = arr;
+	        // If third or later entry with this name
+	    } else {
+	      query_string[pair[0]].push(decodeURIComponent(pair[1]));
+	    }
+	  } 
+	  return query_string;
+	}();
+
+	function getCookie(cname) {
+	    var name = cname + "=";
+	    var ca = document.cookie.split(';');
+	    for(var i = 0; i < ca.length; i++) {
+	        var c = ca[i];
+	        while (c.charAt(0) == ' ') {
+	            c = c.substring(1);
+	        }
+	        if (c.indexOf(name) == 0) {
+	            return c.substring(name.length, c.length);
+	        }
+	    }
+	    return "";
+	}
+	
+	function cardMismatchMsgHandler(merchantReqPaymentOption, mCard){
+		var cardNumberAsString = cardNumberInput.val().replace(/ /g, '').trim();		
+		
+		if(merchantReqPaymentOption != null && merchantReqPaymentOption!=""){
+			if(mCard.type.toUpperCase() === merchantReqPaymentOption.toUpperCase()){
+				cardNumErrorContent.html(CARD_NO_INVALID);
+			}else{
+				cardNumErrorContent.html(PAYMENT_OPTION_MISS_MATCH);
+				return 
+			}
+		}
+		
+		if(mCard.type == "amex" && cardNumberAsString.length < 15){
+			cardNumErrorContent.html(CARD_LENGTH_AMEX_INVALID);
+		}else if (mCard.type != "amex" && cardNumberAsString.length < 16){
+			cardNumErrorContent.html(CARD_LENGTH_INVALID);
+		}		
+	}

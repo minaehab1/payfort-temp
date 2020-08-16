@@ -1,0 +1,161 @@
+
+/**
+* get device screen height
+* usage:  deviceScreenHeight;
+*/
+var deviceScreenHeight = screen.height;
+
+
+/**
+* get device screen height
+* usage:  deviceScreenWidth;
+*/
+var deviceScreenWidth =  screen.width;
+
+
+
+/**
+* get device type
+* usage: deviceType();
+* return MOBILE or DESCKTOP
+*/
+var deviceType = function(){
+	if(/Mobi/.test(navigator.userAgent)){
+		return 'MOBILE';
+	}
+	
+	return 'DESKTOP';
+}
+
+
+/**
+* get mobile device OS 
+* usage: mobileOS.detect();
+* return array of matches OR null
+*/
+var mobileOS = {
+    ANDROID: function() {
+        if( navigator.userAgent.match(/Android/i) !=null ) return 'ANDROID'; else return false;
+    },
+    BLACK_BERRY: function() {
+        if( navigator.userAgent.match(/BlackBerry/i) !=null ) return 'BLACK_BERRY'; else return false;
+    },
+    iOS: function() {
+        if( navigator.userAgent.match(/(iPhone|iPad|iPod)/i) !=null ) return 'iOS'; else return false;
+    },
+    OPERA: function() {
+        if( navigator.userAgent.match(/Opera Mini/i) !=null ) return 'OPERA'; else return false;
+    },
+    WINDOWS_MOBILE: function() {
+        if( navigator.userAgent.match(/IEMobile/i) !=null ) return 'WINDOWS_MOBILE'; else return false;
+    },
+    detect: function() {
+        return (mobileOS.ANDROID() || mobileOS.BLACK_BERRY() || mobileOS.iOS() || mobileOS.OPERA() || mobileOS.WINDOWS_MOBILE() || null);
+    }
+};
+
+
+
+/**
+* get device browser 
+* usage: deviceBrowser.detect();
+* return array of matches OR null
+*/
+var deviceBrowser = {
+	OPERA: function(){
+		if (navigator.userAgent.match(/(Opera|OPR)/i) != null) return 'OPERA'; else return false;
+	},
+	MICROSOFT_EDGE: function(){
+		if (navigator.userAgent.match(/Edge/i)!= null) return 'MICROSOFT_EDGE'; else return false;
+	},
+	MICROSOFT_INTERNET_EXPLORER: function(){
+	if (navigator.userAgent.match(/(MSIE|Trident\/)/i)!= null) return 'MICROSOFT_INTERNET_EXPLORER'; else return false;
+	},
+	CHROME: function(){
+		if(navigator.userAgent.match(/Chrome/i)!=null) return 'CHROME'; else return false;
+	},
+	SAFARI: function(){
+		if (navigator.userAgent.match(/Safari/i)!= null) return 'SAFARI'; else return false;
+	},
+	FIRE_FOX: function(){
+		if (navigator.userAgent.match(/Firefox/i)!= null) return 'FIRE_FOX'; else return false;
+	},
+	detect: function() {
+        return (deviceBrowser.OPERA() || deviceBrowser.MICROSOFT_EDGE() || deviceBrowser.MICROSOFT_INTERNET_EXPLORER() || deviceBrowser.CHROME() || deviceBrowser.SAFARI() || deviceBrowser.FIRE_FOX() || null);
+    }
+}
+
+/**
+* get desktop devices OS 
+* usage: desktopOS.detect();
+* return array of matches OR null
+*/
+var desktopOS = {
+	
+	WINDOWS: function(){
+	if( navigator.userAgent.match(/(Windows|Win|WinNT)/i) !=null) return 'WINDOWS'; else return false;
+	},
+	OPEN_BSD: function(){
+		if( navigator.userAgent.match(/OpenBSD/i) !=null) return 'OPEN_BSD';  else return false;
+	},
+	SUN_OS: function(){
+		if( navigator.userAgent.match(/SunOS/i) !=null) return 'SUN_OS';  else return false;
+	},
+	LINUX: function(){
+		if( navigator.userAgent.match(/(Linux|X11)/i) !=null) return 'LINUX';  else return false;
+	},
+	MAC_OS_X: function(){
+		if( navigator.userAgent.match(/Mac OS X/i) !=null) return 'MAC_OS_X';  else return false;
+	},
+	MAC_OS: function(){
+		if( navigator.userAgent.match(/(MacPPC|MacIntel|Mac_PowerPC|Macintosh)/i) !=null) return 'MAC_OS';  else return false;
+	},
+	QNX: function(){
+		if( navigator.userAgent.match(/QNX/i) !=null) return 'QNX';  else return false;
+	},
+	UNIX: function(){
+		if( navigator.userAgent.match(/UNIX/i) !=null) return 'UNIX';  else return false;
+	},
+	BE_OS: function(){
+		if( navigator.userAgent.match(/BeOS/i) !=null) return 'BE_OS';  else return false;
+	},
+	OS_2: function(){
+		if( navigator.userAgent.match(/OS\/2/i) !=null) return 'OS_2';  else return false;
+	},
+	SEARCH_BOT: function(){
+		if( navigator.userAgent.match(/(nuhk|Googlebot|Yammybot|Openbot|Slurp|MSNBot|Ask Jeeves\/Teoma|ia_archiver)/i) !=null) return 'SEARCH_BOT';  else return false;
+	},
+	detect: function() {
+        return (desktopOS.WINDOWS() || desktopOS.OPEN_BSD() || desktopOS.SUN_OS() || desktopOS.LINUX() || desktopOS.MAC_OS_X() || desktopOS.MAC_OS()
+				|| desktopOS.QNX() || desktopOS.UNIX() || desktopOS.BE_OS() || desktopOS.OS_2() || desktopOS.SEARCH_BOT() || null);
+    }
+}
+
+
+/**
+* get desktop devices OS 
+* usage: deviceOS();
+* return array of matches OR null
+*/
+var deviceOS = function(){
+	if(deviceType() == 'MOBILE'){
+		return mobileOS.detect();
+	}
+
+	return desktopOS.detect();
+}
+
+
+/**
+ * used in sadad, installment standalone page
+ * 
+ * @returns
+ */
+function fillDeviceDetailsInputs(){
+	$("#deviceOs").val(deviceOS());
+	$("#deviceType").val(deviceType());
+	$("#browserType").val(deviceBrowser.detect());
+	$("#screenWidth").val(deviceScreenWidth);
+	$("#screenHeight").val(deviceScreenHeight);
+}
+
